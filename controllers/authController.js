@@ -1,9 +1,8 @@
 // @ts-nocheck
 const User = require('../models/userModel');
-const { db, auth } = require('../config/firebase');
 const bcrypt = require('bcrypt');
+const mongoose=require("mongoose")
 const { generateToken } = require('../utils/token');
-const { getAuth, signInWithPhoneNumber, signOut } = require('../config/firebase');
 
 
 const registerWithEmail = async (req, res) => {
@@ -63,30 +62,31 @@ const loginWithEmail = async (req, res) => {
 };
 const authWithPhone = async (req, res) => {
     try {
-        let { id, phoneNumber } = req.body;
+        let { id, phoneNumber,role } = req.body;
         if (!phoneNumber || !id) {
             return res.status(422).json({
                 status: 'error', message: "Empty Fields. data is required", data: null
             });
         }
-        const existingUser = await User.findOne({ phoneNumber });
+        const existingUser = await User.findOne({ phone: phoneNumber });
+
         if (existingUser) {
             let token = generateToken(existingUser._id, existingUser.role);
-    
-            return res.status(200).json({ status: 'ok', message: 'User Already Exist', data: {...existingUser,token:token} });
-        }
 
-        const newUser = new User({ phone: phoneNumber, password: hashedPassword, role });
-        
+            return res.status(200).json({ status: 'ok', message: 'User Already Exist', data: { existingUser, token: token } });
+        }
+        const newUser = new User({firebase_id:id, phone: phoneNumber, role: role });
+
         await newUser.save();
         let token = generateToken(newUser._id, newUser.role);
-        res.status(201).json({
+        return res.status(201).json({
             status: 'ok',
             message: 'User registered successfully',
-            data: { token:token },
+            data: { token: token },
         });
-    } catch (e) {
-
+    } catch (error) {
+        res.status(500).json({ status: 'error', message: error.message, data: null });
+    
     }
 
 }

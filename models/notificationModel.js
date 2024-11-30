@@ -5,6 +5,7 @@ const notificationSchema = new mongoose.Schema({
     message: { type: String, required: true }, // Notification Message
     type: { type: String }, // Type of Notification (e.g., tip, payout, review)
     status: { type: String, enum: ['read', 'unread'], default: 'unread' }, // Notification Status
+    isActive:{ type: Boolean, default: true }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Notification', notificationSchema);
