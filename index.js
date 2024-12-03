@@ -11,6 +11,8 @@ const { serverPort } = require('./config/envConfig.js');
 const DB = require('./config/mongo_configuration');
 const authRoute = require('./routes/authRoute');
 const profileRoute = require('./routes/profileRoute');
+const notificationRoute = require('./routes/notificationRoute');
+const reviewsRoute = require('./routes/reviewRoute');
 const app = express();
 // Middleware
 app.use(express.json());
@@ -25,6 +27,8 @@ app.use(cors())
 // app.use('/api/admin', require('./routes/adminRoutes'));
 app.use('/v1/auth', authRoute);
 app.use('/v1/user', profileRoute);
+app.use('/v1/notification', notificationRoute);
+app.use('/v1/reviews', reviewsRoute);
 
 
 

@@ -4,7 +4,6 @@ tip-pay-backend/
 ├── middlewares/         # Authentication, error handling, etc.
 ├── models/              # MongoDB schema definitions
 ├── routes/              # Route handlers
-├── services/            # External service integrations (e.g., Firebase, Razorpay)
 ├── utils/               # Utility functions
 ├── app.js               # Main app file
 ├── package.json         # Dependencies
