@@ -10,6 +10,8 @@ const { serverPort } = require('./config/envConfig.js');
 
 const DB = require('./config/mongo_configuration');
 const authRoute = require('./routes/authRoute');
+const tip = require('./routes/tipRoute');
+const payout = require('./routes/payoutRoutes');
 const profileRoute = require('./routes/profileRoute');
 const notificationRoute = require('./routes/notificationRoute');
 const reviewsRoute = require('./routes/reviewRoute');
@@ -29,6 +31,8 @@ app.use('/v1/auth', authRoute);
 app.use('/v1/user', profileRoute);
 app.use('/v1/notification', notificationRoute);
 app.use('/v1/reviews', reviewsRoute);
+app.use('/v1/tip', tip);
+app.use('/v1/payout', payout);
 
 
 

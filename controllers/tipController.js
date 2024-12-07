@@ -19,7 +19,6 @@ let saveTip = async (req, res) => {
       currency: 'INR',
       receipt: `receipt_${Date.now()}`,
     });
-
     // Step 2: Save Payment in Database
     const payment = new Payment({
       userId: employeeId,
@@ -42,10 +41,13 @@ let saveTip = async (req, res) => {
     // Step 4: Respond with Payment Order
     res.status(200).json({ status: 'ok', message: 'Tip initiated', data: { order, payment } });
   } catch (error) {
-    res.status(500).json({ status: 'error', message: `Error creating tip ${error}`, data: null });
+    console.log(error);
+    
+    res.status(500).json({ status: 'error', message: `Error creating ${error.message}`, data: null });
   }
 }
 const crypto = require('crypto');
+const { log } = require('console');
 
 let verifyPayment = async (req, res) => {
   const { razorpay_payment_id, razorpay_order_id, razorpay_signature } = req.body;
