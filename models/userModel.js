@@ -1,11 +1,17 @@
 const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema({
-  firebase_id: { type: String },
-  name: { type: String },
-  email: { type: String, unique: true, sparse: true, default: null },
-  password: { type: String },
-  phone: { type: String, unique: true, sparse: true, default: null },
+  name: { type: String, required: true,default:"ABC" },
+  email: {
+    type: String, unique: true, default: null, validate: {
+      validator: function (value) {
+        // Regular expression to validate email format
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+      },
+      message: (props) => `${props.value} is not a valid email address!`,
+    },
+  },
+  password: { type: String, required: true },
   role: { type: String, enum: ['employee', 'employer'], required: true },
   image: { type: String },
   age: { type: Number },
