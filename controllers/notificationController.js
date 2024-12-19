@@ -45,4 +45,4 @@ const sendMsg = async (registrationToken, msg,title) => {
 
 }
 
-module.exports = { sendNotification }
+module.exports = { sendNotification,sendMsg }
