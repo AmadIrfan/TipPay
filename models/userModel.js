@@ -1,19 +1,37 @@
 const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema({
-  name: { type: String, required: true,default:"ABC" },
+  name: { type: String, required: true, default: "ABC" },
   email: {
-    type: String, unique: true, default: null, validate: {
+    type: String,
+    sparse: true,
+    default: null,
+    validate: {
       validator: function (value) {
-        // Regular expression to validate email format
-        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+        // if (this.phone !== null) {
+        // this.phone.unique = false;
+        //   return true;
+        // }
+        return !value || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
       },
       message: (props) => `${props.value} is not a valid email address!`,
     },
   },
-  password: { type: String, required: true },
+  phone: {
+    type: String,
+    default: null,
+    sparse: true, // To allow null for users authenticating with email
+    validate: {
+      validator: function (value) {
+
+        return !value || /^(\+91[\-\s]?)?[6-9]\d{9}$/.test(value); // Validate 10-digit phone numbers
+      },
+      message: (props) => `${props.value} is not a valid phone number!`,
+    },
+  },
+  password: { type: String },
   role: { type: String, enum: ['employee', 'employer'], required: true },
-  image: { type: String },
+  profilePicture: { type: String },
   age: { type: Number },
   title: { type: String },
   isActive: { type: Boolean, default: true },
@@ -23,7 +41,19 @@ const userSchema = new mongoose.Schema({
     bankName: { type: String },
     ifscCode: { type: String }
   },
-  totalTips: { type: Number, default: 0 }, // Sum of all tips
+  totalTips: { type: Number, default: 0 },
+  employeeDetails: {
+    department: { type: String },
+    organizationName: { type: String }
+  },
+
 }, { timestamps: true });
 
+userSchema.pre('save', function (next) {
+  if (this.role === 'employee') {
+  } else {
+    this.employeeDetails = undefined;
+  }
+  next();
+});
 module.exports = mongoose.model('User', userSchema);
