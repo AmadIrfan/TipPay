@@ -6,7 +6,7 @@ function generateToken(id,  role) {
         // @ts-ignore
         process.env.JWT_SECRET,
         {
-            expiresIn: '1h',
+            expiresIn: '5d',
         });
     return token;
 }
@@ -19,7 +19,7 @@ async function verifyToken(req, res, next) {
     // @ts-ignore
     jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
         if (err) {
-            return res.status(403).json({ message: "Failed to authenticate token" });
+            return res.status(403).json({ message: `Failed to authenticate token ${err}` });
         }
         req.user = decoded;
         next();

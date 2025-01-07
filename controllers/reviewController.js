@@ -1,79 +1,127 @@
 const User = require('../models/userModel');
 const Review = require('../models/reviewModel');
 
-
-let newReviews = async (req, res) => {
+// Add a new review
+const addReview = async (req, res) => {
     try {
-        const { userId, rating, reviewText } = req.body;
+        const { userId, tipId, rating, reviewText } = req.body;
 
         // Validate that the user exists and is an employee
         const user = await User.findById(userId);
         if (!user || user.role !== 'employee') {
-            return res.status(400).json({ message: 'Invalid employee ID' });
+            return res.status(400).json({ status: 'error', message: 'Invalid employee ID', data: null });
         }
 
         // Create a new review
-        const newReview = new Review({ userId, rating, reviewText });
-        await newReview.save();
+        const review = new Review({ userId, tipId, rating, reviewText });
+        await review.save();
 
-        res.status(201).json({ message: 'Review added successfully', review: newReview });
+        res.status(201).json({ status: 'ok', message: 'Review added successfully', data: review });
     } catch (err) {
-        res.status(500).json({ message: 'Error adding review', error: err.message });
+        res.status(500).json({ status: 'error', message: `Error adding review: ${err.message}`, data: null });
     }
-}
-let reviewsById=async (req, res) => {
-    try {
-        const { userId } = req.params;
+};
 
-        // Fetch reviews and populate user details
-        const reviews = await Review.find({ userId }).populate('userId', 'name email');
-        const activeReviews = reviews.filter(review => review.isActive);
+// Fetch reviews for a specific tip and calculate average rating
+const getReviewsByTip = async (req, res) => {
+    try {
+        const { tipId } = req.params;
+
+        // Fetch reviews for the given tip
+        const reviews = await Review.find({ tipId, isActive: true }).populate('userId', 'name email');
+        const totalReviews = reviews.length;
+
         // Calculate average rating
-        const totalReviews = activeReviews.length;
-        const averageRating = totalReviews ? activeReviews.reduce((sum, review) => sum + review.rating, 0) / activeReviews.length // Divide by the number of active reviews
+        const averageRating = totalReviews
+            ? (reviews.reduce((sum, review) => sum + review.rating, 0) / totalReviews).toFixed(2)
             : 0;
 
+        // Categorize reviews into positive (rating >= 4) and negative (rating <= 2)
+        const positiveReviews = reviews.filter((review) => review.rating >= 4);
+        const negativeReviews = reviews.filter((review) => review.rating <= 2);
+
         res.status(200).json({
-            message: `Reviews sent `, status: "ok",
+            status: 'ok',
+            message: 'Reviews fetched successfully',
             data: {
-                averageRating: averageRating.toFixed(2),
+                averageRating,
                 totalReviews,
-                activeReviews
-            }
+                positiveReviews,
+                negativeReviews,
+                reviews,
+            },
         });
     } catch (err) {
-        res.status(500).json({ data: null, message: `Error fetching reviews ${err.message}`, status: "error" });
+        res.status(500).json({ status: 'error', message: `Error fetching reviews: ${err.message}`, data: null });
     }
-}
+};
 
+// Fetch overall summary of reviews
+const getReviewSummary = async (req, res) => {
+    try {
+        // Fetch all active reviews
+        const reviews = await Review.find({ isActive: true });
+        const totalReviews = reviews.length;
 
-const flaggedReview=async (req, res) => {
+        // Calculate overall average rating
+        const averageRating = totalReviews
+            ? (reviews.reduce((sum, review) => sum + review.rating, 0) / totalReviews).toFixed(2)
+            : 0;
+
+        // Categorize reviews into positive, neutral, and negative
+        const positiveReviews = reviews.filter((review) => review.rating >= 4);
+        const neutralReviews = reviews.filter((review) => review.rating === 3);
+        const negativeReviews = reviews.filter((review) => review.rating <= 2);
+
+        res.status(200).json({
+            status: 'ok',
+            message: 'Review summary fetched successfully',
+            data: {
+                totalReviews,
+                averageRating,
+                positiveReviewCount: positiveReviews.length,
+                neutralReviewCount: neutralReviews.length,
+                negativeReviewCount: negativeReviews.length,
+            },
+        });
+    } catch (err) {
+        res.status(500).json({ status: 'error', message: `Error fetching review summary: ${err.message}`, data: null });
+    }
+};
+
+// Flag a review
+const flagReview = async (req, res) => {
     try {
         const { reviewId } = req.params;
+        const { flaggedReason } = req.body; // Optional reason for flagging
 
         // Update the review's flagged status
         const updatedReview = await Review.findByIdAndUpdate(
             reviewId,
-            { flagged: true },
+            { flagged: true, flaggedReason },
             { new: true }
         );
 
         if (!updatedReview) {
-            return res.status(404).json({ message: 'Review not found' });
+            return res.status(404).json({ status: 'error', message: 'Review not found', data: null });
         }
 
-        res.status(200).json({ message: 'Review flagged successfully', updatedReview });
+        res.status(200).json({
+            status: 'ok',
+            message: 'Review flagged successfully',
+            data: updatedReview,
+        });
     } catch (err) {
-        res.status(500).json({ message: 'Error flagging review', error: err.message });
+        res.status(500).json({ status: 'error', message: `Error flagging review: ${err.message}`, data: null });
     }
-}
+};
 
-
-const deleteReview=async (req, res) => {
+// Soft delete a review
+const deleteReview = async (req, res) => {
     try {
         const { reviewId } = req.body;
 
-        // Update the review's flagged status
+        // Soft delete the review by marking it as inactive
         const updatedReview = await Review.findByIdAndUpdate(
             reviewId,
             { isActive: false },
@@ -81,17 +129,27 @@ const deleteReview=async (req, res) => {
         );
 
         if (!updatedReview) {
-            return res.status(404).json({ message: 'Review not found' });
+            return res.status(404).json({ status: 'error', message: 'Review not found', data: null });
         }
 
-        res.status(200).json({status:'ok', message: 'Review Deleted successfully',data: updatedReview });
+        res.status(200).json({
+            status: 'ok',
+            message: 'Review deleted successfully',
+            data: updatedReview,
+        });
     } catch (err) {
-        res.status(500).json({ status:'error',message: `Error Deleted review ${err.message}`, data:null });
+        res.status(500).json({
+            status: 'error',
+            message: `Error deleting review: ${err.message}`,
+            data: null,
+        });
     }
-}
+};
+
 module.exports = {
+    addReview,
+    getReviewsByTip,
+    getReviewSummary,
+    flagReview,
     deleteReview,
-    newReviews,
-    flaggedReview,
-    reviewsById,
-}
+};

@@ -5,17 +5,36 @@ const reviewSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
         required: true
-    }, // Refers to the User schema
+    }, 
+    tipId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Tip',
+        required: true
+    }, 
     rating: {
         type: Number,
         required: true,
         min: 1,
         max: 5
     },
-    reviewText: { type: String, required: true },
-    flagged: { type: Boolean, default: false }, // Indicates if the review is flagged
-    date: { type: Date, default: Date.now },  // Timestamp for the review
-    isActive: { type: Boolean, default: true }
+    reviewText: {
+        type: String,
+        trim: true, 
+        maxlength: 500
+    },
+    flagged: {
+        type: Boolean,
+        default: false
+    }, 
+    flaggedReason: {
+        type: String,
+        trim: true,
+        default: null
+    }, 
+    isActive: {
+        type: Boolean,
+        default: true
+    }, 
 }, { timestamps: true });
 
 module.exports = mongoose.model('Review', reviewSchema);
