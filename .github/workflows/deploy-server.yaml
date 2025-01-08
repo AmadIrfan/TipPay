@@ -1,0 +1,11 @@
+name: TipPay-NodeJs-Server
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Deploying NodeJS Application
+    runs-on: ubuntu-latest
