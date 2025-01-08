@@ -8,10 +8,6 @@ const userSchema = new mongoose.Schema({
     default: null,
     validate: {
       validator: function (value) {
-        // if (this.phone !== null) {
-        // this.phone.unique = false;
-        //   return true;
-        // }
         return !value || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
       },
       message: (props) => `${props.value} is not a valid email address!`,
@@ -20,7 +16,7 @@ const userSchema = new mongoose.Schema({
   phone: {
     type: String,
     default: null,
-    sparse: true, // To allow null for users authenticating with email
+    sparse: true,
     validate: {
       validator: function (value) {
 

@@ -1,3 +1,4 @@
+// @ts-nocheck
 const express = require('express');
 const morgan = require('morgan');
 const bodyParser = require('body-parser');
@@ -39,14 +40,14 @@ const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: 100, // limit each IP to 100 requests per windowMs
     message: "Too many requests from this IP, please try again after 15 minutes",
-  });
-  
-  // Apply the rate limiter middleware globally
-  app.use(limiter);
+});
+
+// Apply the rate limiter middleware globally
+app.use(limiter);
 
 
 app.get('/', (req, res) => {
-    return res.send('Welcome to my TipPay Backend')
+    return res.status(200).json('Welcome to my TipPay Backend')
 })
 
 app.use((req, res, next) => {
@@ -58,4 +59,4 @@ app.use((req, res, next) => {
 });
 
 const PORT = serverPort || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, '0.0.0.0', () => console.log(`Server running on port ${PORT}`));

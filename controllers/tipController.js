@@ -1,83 +1,287 @@
+
 const Razorpay = require('razorpay');
-const { Payment } = require('../models/paymentModel');
+const { Payment, Payout } = require('../models/paymentModel');
 const Tip = require('../models/tipModels');
 const User = require('../models/userModel');
+const crypto = require('crypto');
+require('dotenv').config();
 
 
-const razorpay = new Razorpay({
-  key_id: 'your_key_id',
-  key_secret: 'your_key_secret',
+// RAZORPAY_KEY_ID=your_key_id
+// RAZORPAY_KEY_SECRET=your_key_secret
+// RAZORPAY_WEBHOOK_SECRET=your_webhook_secret
+
+const razorpayInstance = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY_ID,
+  key_secret: process.env.RAZORPAY_KEY_SECRET,
 });
 
-let saveTip = async (req, res) => {
-  const { employeeId, amount, customerId, paymentMethod } = req.body;
+let addTip = async (req, res) => {
 
   try {
-    // Step 1: Create Razorpay Payment Order
-    const order = await razorpay.orders.create({
-      amount: amount * 100, // Amount in paise
+    const { amount } = req.body;
+    let employeeId = req.user.id;
+    // let customerId = req.user.id;
+    // console.log(customerId);
+
+    const order = await razorpayInstance.orders.create({
+      amount: amount * 100,
       currency: 'INR',
       receipt: `receipt_${Date.now()}`,
     });
-    // Step 2: Save Payment in Database
     const payment = new Payment({
       userId: employeeId,
       amount,
       status: 'pending',
-      transactionId: order.id,
-      paymentMethod,
+      receiptId: order.receipt,
+      razorpayOrderId: order.id,
     });
     await payment.save();
 
-    // Step 3: Save Tip in Database
-    const tip = new Tip({
-      employeeId,
-      amount,
-      customerId,
-      paymentMethod,
-    });
-    await tip.save();
-
-    // Step 4: Respond with Payment Order
-    res.status(200).json({ status: 'ok', message: 'Tip initiated', data: { order, payment } });
+    res.status(200).json({ status: 'ok', message: 'Tip initiated', data: payment });
   } catch (error) {
-    console.log(error);
-    
     res.status(500).json({ status: 'error', message: `Error creating ${error.message}`, data: null });
   }
 }
-const crypto = require('crypto');
-const { log } = require('console');
+
 
 let verifyPayment = async (req, res) => {
-  const { razorpay_payment_id, razorpay_order_id, razorpay_signature } = req.body;
-
   try {
-    // Step 1: Verify Razorpay Signature
-    const hmac = crypto.createHmac('sha256', 'your_key_secret');
-    hmac.update(`${razorpay_order_id}|${razorpay_payment_id}`);
-    const digest = hmac.digest('hex');
+    const { razorpayOrderId, razorpayPaymentId, razorpaySignature } = req.body;
 
-    if (digest !== razorpay_signature) {
-      return res.status(400).json({ status: 'error', data: null, message: 'Payment verification failed' });
+    const body = razorpayOrderId + '|' + razorpayPaymentId;
+
+    const expectedSignature = crypto
+      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+      .update(body)
+      .digest('hex');
+
+    if (expectedSignature !== razorpaySignature) {
+      return res.status(400).json({ success: false, message: 'Invalid signature', data: null });
     }
+    const paymentMethodFind = await razorpayInstance.payments.fetch(razorpayPaymentId);
 
-    // Step 2: Update Payment Status
+    const paymentMethod = paymentMethodFind.method; // This will give 'card', 'upi', 'wallet', etc.
+
+    console.log('Payment Method:', paymentMethod);
+
     const payment = await Payment.findOneAndUpdate(
-      { transactionId: razorpay_order_id },
-      { status: 'success' },
+
+      { razorpayOrderId },
+      { status: 'success', razorpayPaymentId, razorpaySignature, paymentMethod: paymentMethod },
       { new: true }
     );
+    // Todo:  here i have to change  for customerID 
+    const tip = new Tip({
+      employeeId: payment.userId,
+      amount: payment.amount,
+      customerId: payment.userId,
+      paymentMethod:paymentMethod
+    });
+    await tip.save();
+    res.status(200).json({
+      success: true,
+      message: 'Payment verified successfully',
+      payment,
+    });
 
-    // Step 3: Respond with Payment Details
-    res.status(200).json({ status: 'ok', data: { payment }, message: 'Payment verified successfully' });
-  } catch (error) {
-    res.status(500).json({ status: 'error', data: null, message: `Error verifying payment ${error}` });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
   }
 }
 
 
-module.exports = {
-  saveTip,
-  verifyPayment,
+let paymentsWebhook = async (req, res) => {
+  const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
+
+  const signature = req.headers['x-razorpay-signature'];
+  const payload = JSON.stringify(req.body);
+
+  const expectedSignature = crypto
+    .createHmac('sha256', secret)
+    .update(payload)
+    .digest('hex');
+
+  if (expectedSignature !== signature) {
+    return res.status(400).json({ success: false, message: 'Invalid webhook signature' });
+  }
+
+  const event = req.body;
+
+  if (event.event === 'payment.captured') {
+    const { order_id, payment_id } = event.payload.payment.entity;
+
+    await Payment.findOneAndUpdate(
+      { razorpayOrderId: order_id },
+      { status: 'success', razorpayPaymentId: payment_id }
+    );
+  }
+
+  res.status(200).json({ success: true, message: 'Webhook processed successfully' });
 }
+
+let expirePayment = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    if (!userId) {
+      return res.status(400).json({ status: 'error', message: 'User ID is required.', data: null });
+    }
+    // Find and update payments that are pending and older than 2 days
+    const result = await Payment.updateMany(
+      {
+        employeeId: userId, // Match the user ID
+        status: 'pending', // Only pending payments
+        // requestedAt: { $lte: twoDaysAgo }, // Created more than 2 days ago
+      },
+      {
+        $set: { status: 'expired' },
+      }
+    );
+
+    return res.status(200).json({
+      status: 'ok',
+      message: 'Expired payments checked and updated successfully.',
+      data: {},
+    });
+  } catch (error) {
+    console.error('Error checking and updating expired payments:', error);
+    return res.status(500).json({ status: 'error', message: 'Internal server error.' });
+  }
+}
+
+
+
+// Create a new tip
+
+// Fetch tips by time period (daily, weekly, monthly)
+const getTipsByPeriod = async (req, res) => {
+  try {
+    // const { employeeId, period } = req.params;
+    const { period } = req.query;
+    let employeeId = req.user.id;
+    // Validate employee
+    const employee = await User.findById(employeeId);
+    if (!employee || employee.role !== 'employee') {
+      return res.status(400).json({ status: 'error', message: 'Invalid employee ID', data: null });
+    }
+    let startDate = new Date();
+    if (period === 'daily') { startDate.setHours(0, 0, 0, 0); }
+    else if (period === 'weekly') { startDate.setDate(startDate.getDate() - 7); }
+    else if (period === 'monthly') { startDate.setDate(startDate.getDate() - 30); }
+    else {
+      if (!period) {
+        return res.status(400).json({ status: 'error', message: 'Invalid period', data: null });
+      }
+      else {
+        startDate.setDate(startDate.getDate() - Number.parseInt(period));
+      }
+    }
+
+    const tips = await Tip.find({ employeeId, timestamp: { $gte: startDate } });
+
+    const totalAmount = tips.reduce((sum, tip) => sum + tip.amount, 0);
+
+    res.status(200).json({
+      status: 'ok',
+      message: `Tips fetched for ${period} period.`,
+      data: { totalAmount, tips },
+    });
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: `Error fetching tips: ${err.message}`, data: null });
+  }
+};
+
+// Fetch individual tip details
+const getTipDetails = async (req, res) => {
+  try {
+    const { tipId } = req.query;
+
+    const tip = await Tip.findById(tipId).populate('employeeId', 'name email');
+
+    if (!tip) {
+      return res.status(404).json({ status: 'error', message: 'Tip not found', data: null });
+    }
+
+    res.status(200).json({ status: 'ok', message: 'Tip details fetched successfully', data: tip });
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: `Error fetching tip details: ${err.message}`, data: null });
+  }
+};
+
+// Add a payout request
+const requestPayout = async (req, res) => {
+  try {
+    const { employeeId, amount } = req.body;
+
+    const employee = await User.findById(employeeId);
+    if (!employee || employee.role !== 'employee') {
+      return res.status(400).json({ status: 'error', message: 'Invalid employee ID', data: null });
+    }
+
+    const payout = new Payout({ employeeId, amount });
+    await payout.save();
+
+    res.status(201).json({
+      status: 'ok',
+      message: 'Payout request submitted successfully',
+      data: payout,
+    });
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: `Error requesting payout: ${err.message}`, data: null });
+  }
+};
+
+// Fetch payout status for an employee
+const getPayoutStatus = async (req, res) => {
+  try {
+    const { employeeId } = req.params;
+
+    const payouts = await Payout.find({ employeeId });
+
+    res.status(200).json({
+      status: 'ok',
+      message: 'Payout status fetched successfully',
+      data: payouts,
+    });
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: `Error fetching payout status: ${err.message}`, data: null });
+  }
+};
+
+// Fetch all payments for a user
+const getPaymentsByUser = async (req, res) => {
+  try {
+    const { userId } = req.query;
+
+    const payments = await Payment.find({ userId });
+
+    res.status(200).json({
+      status: 'ok',
+      message: 'Payments fetched successfully',
+      data: payments,
+    });
+  } catch (err) {
+    res.status(500).json({
+      status: 'error',
+      message: `Error fetching payments: ${err.message}`,
+      data: null,
+    });
+  }
+};
+
+module.exports = {
+  addTip,
+  getTipsByPeriod,
+  getTipDetails,
+  requestPayout,
+  getPayoutStatus,
+  getPaymentsByUser,
+  expirePayment, verifyPayment,
+  paymentsWebhook,
+};
+
+
+
+
+
