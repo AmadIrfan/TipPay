@@ -7,8 +7,7 @@ const sendNotification = async (req, res) => {
         let token = req.body.fcmToken;
         let msg = req.body.message;
         let title = req.body.title;
-        console.log(msg);
-
+    
 
         await sendMsg(token, 'this is my msg from node')
         let notification = await notificationModel.create({

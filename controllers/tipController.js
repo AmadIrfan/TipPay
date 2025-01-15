@@ -21,8 +21,6 @@ let addTip = async (req, res) => {
   try {
     const { amount } = req.body;
     let employeeId = req.user.id;
-    // let customerId = req.user.id;
-    // console.log(customerId);
 
     const order = await razorpayInstance.orders.create({
       amount: amount * 100,
@@ -63,7 +61,6 @@ let verifyPayment = async (req, res) => {
 
     const paymentMethod = paymentMethodFind.method; // This will give 'card', 'upi', 'wallet', etc.
 
-    console.log('Payment Method:', paymentMethod);
 
     const payment = await Payment.findOneAndUpdate(
 
@@ -71,14 +68,30 @@ let verifyPayment = async (req, res) => {
       { status: 'success', razorpayPaymentId, razorpaySignature, paymentMethod: paymentMethod },
       { new: true }
     );
+    if (!payment) {
+      return res.status(404).json({ success: false, message: 'payment request is not created' });
+
+    }
+    const user = await User.findById(payment.userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'user not found' });
+    }
+
+
     // Todo:  here i have to change  for customerID 
     const tip = new Tip({
       employeeId: payment.userId,
       amount: payment.amount,
       customerId: payment.userId,
-      paymentMethod:paymentMethod
+      paymentMethod: paymentMethod
     });
+
+
     await tip.save();
+    user.totalTips = Number(user.totalTips) + Number(payment.amount);
+
+    await user.save();
+
     res.status(200).json({
       success: true,
       message: 'Payment verified successfully',
@@ -161,6 +174,7 @@ const getTipsByPeriod = async (req, res) => {
     const { period } = req.query;
     let employeeId = req.user.id;
     // Validate employee
+
     const employee = await User.findById(employeeId);
     if (!employee || employee.role !== 'employee') {
       return res.status(400).json({ status: 'error', message: 'Invalid employee ID', data: null });
@@ -235,7 +249,7 @@ const requestPayout = async (req, res) => {
 // Fetch payout status for an employee
 const getPayoutStatus = async (req, res) => {
   try {
-    const { employeeId } = req.params;
+    const employeeId = req.user.id;
 
     const payouts = await Payout.find({ employeeId });
 
@@ -252,7 +266,7 @@ const getPayoutStatus = async (req, res) => {
 // Fetch all payments for a user
 const getPaymentsByUser = async (req, res) => {
   try {
-    const { userId } = req.query;
+    const userId = req.user.id;
 
     const payments = await Payment.find({ userId });
 

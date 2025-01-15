@@ -2,20 +2,22 @@ const express = require('express');
 const router = express.Router();
 const {
     addReview,
-    getReviewsByTip,
     flagReview,
+    getReviewsByUserId,
     getReviewSummary,
+
     deleteReview,
-} = require('../controllers/reviewController')
+    getReviewsByTipId,
+} = require('../controllers/reviewController');
+const { verifyToken } = require('../utils/token');
 
 
 
-router.post('/', addReview);
-router.get('/:tipId', getReviewsByTip);
-
-
-router.get('/reviewSummery', getReviewSummary);
-router.post('/:reviewId/flag', flagReview);
-router.delete('/delete', deleteReview);
+router.post('/', verifyToken, addReview);
+router.get('/getUserReviewSummery', verifyToken, getReviewsByUserId);
+router.get('/get/reviewSummery', verifyToken, getReviewSummary);
+router.get('/get/byTips', verifyToken, getReviewsByTipId);
+router.post('/:reviewId/flag', verifyToken, flagReview);
+router.delete('/delete', verifyToken, deleteReview);
 
 module.exports = router;

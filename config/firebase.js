@@ -13,13 +13,7 @@ const firebaseConfig = {
     messagingSenderId: process.env.messagingSenderId,
 };
 
-console.log(process.env.appId);
-console.log(process.env.apiKey);
-console.log(process.env.projectId);
-console.log(process.env.authDomain);
-console.log(process.env.measurementId);
-console.log(process.env.storageBucket);
-console.log(process.env.messagingSenderId);
+
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth();

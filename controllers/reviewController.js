@@ -4,8 +4,8 @@ const Review = require('../models/reviewModel');
 // Add a new review
 const addReview = async (req, res) => {
     try {
-        const { userId, tipId, rating, reviewText } = req.body;
-
+        const { tipId, rating, reviewText } = req.body;
+        const userId = req.user.id;
         // Validate that the user exists and is an employee
         const user = await User.findById(userId);
         if (!user || user.role !== 'employee') {
@@ -23,12 +23,13 @@ const addReview = async (req, res) => {
 };
 
 // Fetch reviews for a specific tip and calculate average rating
-const getReviewsByTip = async (req, res) => {
+const getReviewsByUserId = async (req, res) => {
     try {
-        const { tipId } = req.params;
-
+        const userId = req.user.id;
+    
         // Fetch reviews for the given tip
-        const reviews = await Review.find({ tipId, isActive: true }).populate('userId', 'name email');
+        const reviews = await Review.find({ userId, isActive: true });
+    
         const totalReviews = reviews.length;
 
         // Calculate average rating
@@ -55,14 +56,35 @@ const getReviewsByTip = async (req, res) => {
         res.status(500).json({ status: 'error', message: `Error fetching reviews: ${err.message}`, data: null });
     }
 };
+const getReviewsByTipId = async (req, res) => {
+    try {
+        const { tipId } = req.body;
+        const userId = req.user.id;
+        if (!tipId || tipId === '') {
+            return res.status(400).json({ status: 'error', message: `provide valid tip id`, data: null });
+
+        }
+        // Fetch reviews for the given tip
+        const reviews = await Review.find({ tipId, userId, isActive: true });
+        res.status(200).json({
+            status: 'ok',
+            message: 'Reviews fetched successfully',
+            data: {
+                reviews,
+            },
+        });
+    } catch (err) {
+        res.status(500).json({ status: 'error', message: `Error fetching reviews: ${err.message}`, data: null });
+    }
+};
 
 // Fetch overall summary of reviews
 const getReviewSummary = async (req, res) => {
     try {
         // Fetch all active reviews
+    
         const reviews = await Review.find({ isActive: true });
         const totalReviews = reviews.length;
-
         // Calculate overall average rating
         const averageRating = totalReviews
             ? (reviews.reduce((sum, review) => sum + review.rating, 0) / totalReviews).toFixed(2)
@@ -70,8 +92,8 @@ const getReviewSummary = async (req, res) => {
 
         // Categorize reviews into positive, neutral, and negative
         const positiveReviews = reviews.filter((review) => review.rating >= 4);
-        const neutralReviews = reviews.filter((review) => review.rating === 3);
-        const negativeReviews = reviews.filter((review) => review.rating <= 2);
+        const neutralReviews = reviews.filter((review) => review.rating < 4 && review.rating >= 3);
+        const negativeReviews = reviews.filter((review) => review.rating < 3);
 
         res.status(200).json({
             status: 'ok',
@@ -80,11 +102,15 @@ const getReviewSummary = async (req, res) => {
                 totalReviews,
                 averageRating,
                 positiveReviewCount: positiveReviews.length,
+                positiveReview: positiveReviews,
                 neutralReviewCount: neutralReviews.length,
+                neutralReview: neutralReviews,
                 negativeReviewCount: negativeReviews.length,
+                negativeReview: negativeReviews,
             },
         });
     } catch (err) {
+    
         res.status(500).json({ status: 'error', message: `Error fetching review summary: ${err.message}`, data: null });
     }
 };
@@ -148,8 +174,9 @@ const deleteReview = async (req, res) => {
 
 module.exports = {
     addReview,
-    getReviewsByTip,
+    getReviewsByUserId,
     getReviewSummary,
     flagReview,
     deleteReview,
+    getReviewsByTipId
 };

@@ -3,25 +3,24 @@ const User = require('../models/userModel');
 
 
 let payout = async (req, res) => {
-  const { employeeId, amount } = req.body;
+  const { userId, amount } = req.body;
 
   try {
     // Fetch employee details
-    const user = await User.findById(employeeId);
+    const user = await User.findById(userId);
 
-    if (user) {
+    if (!user) {
       // Check if the employee has enough tips
-      if (user.totalTips < amount) {
-        return res.status(400).json({ message: 'Insufficient tips for payout' });
-      }
+      return res.status(404).json({ status: 'error', data: null, message: 'user not found' });
     }
-    else {
+    if (user.totalTips < amount) {
+      return res.status(400).json({ status: 'error', data: null, message: 'Insufficient tips for payout' });
+    }
 
-    }
 
     // Create payout request in the database
     const payout = new Payout({
-      employeeId,
+      employeeId: userId,
       amount,
       status: 'pending',
     });
@@ -34,22 +33,41 @@ let payout = async (req, res) => {
 }
 
 let approvePayout = async (req, res) => {
-  const { id } = req.params;
-  const { status } = req.body;
 
   try {
-    const payout = await Payout.findByIdAndUpdate(id, { status, processedAt: Date.now() }, { new: true });
+    const { id } = req.params;
+    const { status } = req.body;
+    const payout = await Payout.findByIdAndUpdate(id, { processedAt: Date.now() }, { new: true });
 
-    if (payout !== null) {
-      if (status === 'approved') {
-        // Deduct payout amount from user's total tips
-        await User.findByIdAndUpdate(payout.employeeId, { $inc: { totalTips: -payout.amount } });
-      }
+    if (!payout) {
+
+      return res.status(404).json({ status: 'error', message: 'no request found', data: null });
+    }
+    if (payout.status === "failed") {
+
+      return res.status(400).json({ status: 'error', message: 'request is already proceed with failed', data: null });
+    }
+    if (payout.status === "approved") {
+
+      return res.status(200).json({ status: 'error', message: 'request is already approved', data: null });
     }
 
-    res.status(200).json({ status: 'ok', message: 'Payout updated successfully', data: payout });
+
+    if (status === 'approved') {
+      await User.findByIdAndUpdate(payout.employeeId, { $inc: { totalTips: -payout.amount } });
+      payout.status = "approved";
+      await payout.save();
+      return res.status(200).json({ status: 'ok', message: 'Payout updated successfully', data: payout });
+    }
+    else if (status === 'failed') {
+      payout.status = "failed";
+      await payout.save()
+      return res.status(400).json({ status: 'error', message: 'Payment request Failed', data: null });
+
+    }
+
   } catch (error) {
-    res.status(500).json({ status: 'error', data: null, message: `Error updating payout ${error.message}` });
+    return res.status(500).json({ status: 'error', data: null, message: `Error updating payout ${error.message}` });
   }
 }
 

@@ -6,7 +6,6 @@ const getProfile = async (req, res) => {
     try {
 
         const user = await User.findById(req.user.id).select('-otp -otpExpires -__v');
-        console.log(user);
         
         if (user?.role?.toLowerCase() !== "employee") {
             let EmUser = { ...user._doc }; 

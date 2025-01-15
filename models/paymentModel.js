@@ -19,7 +19,7 @@ let Payment = mongoose.model('Payment', paymentSchema);
 const payoutSchema = new mongoose.Schema({
     employeeId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     amount: { type: Number, required: true },
-    status: { type: String, default: 'pending' },
+    status: { type: String, default: 'pending', enum: ['pending', 'failed', 'approved'] },
     requestedAt: { type: Date, default: Date.now },
     processedAt: { type: Date },
 });

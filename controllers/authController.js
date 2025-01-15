@@ -22,7 +22,6 @@ const registerWithEmail = async (req, res) => {
 
         // Create and save the new user
         let name = email.split("@")[0];
-        // console.log(name);
         const newUser = new User({ name: name, email, password: hashedPassword, role });
         await newUser.save();
 
@@ -43,7 +42,6 @@ const loginWithEmail = async (req, res) => {
     try {
         // Find user by email
         const user = await User.findOne({ email: email });
-        // console.log(user);
 
         if (!user) {
             return res.status(401).json({ status: 'error', message: 'Invalid email or password', data: null });
@@ -126,7 +124,6 @@ let sendOtp = async (req, res) => {
     try {
         const { phone, fcmToken } = req.body;
         if (!phone || !/^(\+91[\-\s]?)?[6-9]\d{9}$/.test(phone)) {
-            console.log('here');
             throw new Error("Invalid phone number");
         }
 
@@ -152,6 +149,7 @@ let sendOtp = async (req, res) => {
         await userOtp.save();
 
         await sendMsg(fcmToken, `your phone verification otp is ${otp}. This otp is valid for only 5 minutes `, "Verification token");
+
         // TODO: Send OTP via notification/SMS service
         // console.log(`OTP for ${phone}: ${otp}`);
 
