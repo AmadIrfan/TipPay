@@ -30,9 +30,11 @@ app.use(cors())
 // app.use('/api/admin', require('./routes/adminRoutes'));
 app.use('/v1/auth', authRoute);
 app.use('/v1/user', profileRoute);
+
 app.use('/v1/notification', notificationRoute);
-app.use('/v1/reviews', reviewsRoute);
 app.use('/v1/tip', tip);
+
+app.use('/v1/reviews', reviewsRoute);
 app.use('/v1/payout', payout);
 
 
