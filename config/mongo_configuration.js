@@ -1,12 +1,12 @@
 const mongoose = require("mongoose");
 require("dotenv").config();
-mongoose.set("strictQuery", true);
-
+mongoose.set("strictQuery", false);
+// mongoose.set('debug', true)
 const url = process.env.MONGO_URL;
 
 
 // @ts-ignore
-mongoose.connect(url, {});
+mongoose.connect(url);
 
 const db = mongoose.connection;
 

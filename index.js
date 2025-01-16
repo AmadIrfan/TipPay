@@ -14,6 +14,7 @@ const authRoute = require('./routes/authRoute');
 const tip = require('./routes/tipRoute');
 const payout = require('./routes/payoutRoutes');
 const profileRoute = require('./routes/profileRoute');
+const employeeRoute = require('./routes/employeeRoute');
 const notificationRoute = require('./routes/notificationRoute');
 const reviewsRoute = require('./routes/reviewRoute');
 const app = express();
@@ -30,6 +31,7 @@ app.use(cors())
 // app.use('/api/admin', require('./routes/adminRoutes'));
 app.use('/v1/auth', authRoute);
 app.use('/v1/user', profileRoute);
+app.use('/v1/employee', employeeRoute);
 
 app.use('/v1/notification', notificationRoute);
 app.use('/v1/tip', tip);

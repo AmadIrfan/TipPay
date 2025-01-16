@@ -1,5 +1,6 @@
 // @ts-nocheck
 const User = require('../models/userModel');
+
 const Otp = require('../models/otpModel');
 const bcrypt = require('bcrypt');
 const mongoose = require("mongoose")
@@ -34,8 +35,6 @@ const registerWithEmail = async (req, res) => {
         res.status(500).json({ status: 'error', message: error.message, data: null });
     }
 };
-
-// Login Endpoint
 const loginWithEmail = async (req, res) => {
     const { email, password } = req.body;
 
@@ -101,7 +100,8 @@ const saveUser = async (phone, fcmToken, role) => {
         if (user) {
             let token = generateToken(user._id, user.role);
             return {
-                token: token
+                token: token,
+                user: user,
             };
         }
 
@@ -110,15 +110,13 @@ const saveUser = async (phone, fcmToken, role) => {
         await newUser.save();
 
         let token = generateToken(newUser._id, newUser.role);
-        return { id: newUser._id, phone: phone, token: token };
+        return { token: token, user: newUser };
 
     } catch (error) {
         throw new Error(error.message)
     }
 
 }
-
-
 let sendOtp = async (req, res) => {
 
     try {
@@ -165,7 +163,6 @@ let sendOtp = async (req, res) => {
         res.status(500).json({ status: 'error', message: error.message, data: null });
     }
 }
-
 let verifyOtp = async (req, res) => {
     const { phone, otp, role } = req.body;
 

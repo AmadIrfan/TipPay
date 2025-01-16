@@ -4,7 +4,7 @@ const { verifyToken } = require('../utils/token');
 const app = express.Router();
 
 app.post('/payouts/',verifyToken, payout)
-app.patch('/payouts/:id', approvePayout)
+
 
 
 module.exports = app;
