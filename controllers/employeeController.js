@@ -192,5 +192,5 @@ module.exports = {
     getEmployeePerformance,
     getTopAndLowPerformers,
     getEmployeePayoutHistory,
-
 }
+

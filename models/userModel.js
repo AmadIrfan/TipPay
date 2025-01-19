@@ -17,13 +17,6 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: null,
     sparse: true,
-    validate: {
-      validator: function (value) {
-
-        return !value || /^(\+91[\-\s]?)?[6-9]\d{9}$/.test(value); // Validate 10-digit phone numbers
-      },
-      message: (props) => `${props.value} is not a valid phone number!`,
-    },
   },
   password: { type: String },
   role: { type: String, enum: ['employee', 'employer'], required: true },
