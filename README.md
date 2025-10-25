@@ -1,7 +1,23 @@
+# Tip Pay
 
-# Tip Pay README file
+pay tips with just 1 click.
 
-## How To Setup ?
+## Project Structure
+
+```sh
+tip-pay-backend/
+├── config/              # Configuration files (e.g., DB connection, Razorpay config)
+├── controllers/         # Business logic for each module
+├── middlewares/         # Authentication, error handling, etc.
+├── models/              # MongoDB schema definitions
+├── routes/              # Route handlers
+├── utils/               # Utility functions
+├── app.js               # Main app file
+├── package.json         # Dependencies
+└── README.md            # Project documentation
+```
+
+## How To Setup
 
 For installation of Dependencies use the command given blow.
 
